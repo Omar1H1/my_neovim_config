@@ -3,40 +3,82 @@ return {
     "williamboman/mason.nvim",
     config = function()
       require("mason").setup()
-    end
+    end,
+  },
+  {
+    "WhoIsSethDaniel/mason-tool-installer.nvim",
+    config = function()
+      require("mason-tool-installer").setup({
+        ensure_installed = {
+          "java-debug-adapter",
+          "java-test",
+        },
+      })
+    end,
   },
   {
     "williamboman/mason-lspconfig.nvim",
     config = function()
+      local lspconfig = require("lspconfig")
+      local capabilities = require("cmp_nvim_lsp").default_capabilities()
+      local on_attach = function(client, bufnr)
+        -- Keybindings for LSP
+        vim.keymap.set("n", "K", vim.lsp.buf.hover, { buffer = bufnr, desc = "LSP Hover" })
+        vim.keymap.set("n", "gd", vim.lsp.buf.definition, { buffer = bufnr, desc = "Go to Definition" })
+        vim.keymap.set(
+          { "n", "v" },
+          "<leader>ca",
+          vim.lsp.buf.code_action,
+          { buffer = bufnr, desc = "Code Action" }
+        )
+      end
+
       require("mason-lspconfig").setup({
-        ensure_installed = {"lua_ls", "tsserver"}
+        ensure_installed = { "lua_ls", "jdtls", "tsserver" },
+        automatic_installation = true,
+        setup_handlers = {
+          function(server_name)
+            if server_name == "jdtls" then
+              lspconfig[server_name].setup({
+                on_attach = on_attach,
+                capabilities = capabilities,
+              })
+              return
+            end
+            lspconfig[server_name].setup({
+              capabilities = capabilities,
+              on_attach = on_attach,
+            })
+          end,
+        },
       })
-    end
+    end,
   },
   {
     "neovim/nvim-lspconfig",
     config = function()
       local lspconfig = require("lspconfig")
-
-      -- Ensure the language server is installed by Mason
-      local mason_registry = require("mason-registry")
-      if not mason_registry.is_installed("lua-language-server") then
-        print("Installing lua-language-server...")
-        mason_registry.get_package("lua-language-server"):install()
+      local capabilities = require("cmp_nvim_lsp").default_capabilities()
+      local on_attach = function(client, bufnr)
+        -- Keybindings for LSP
+        vim.keymap.set("n", "K", vim.lsp.buf.hover, { buffer = bufnr, desc = "LSP Hover" })
+        vim.keymap.set("n", "gd", vim.lsp.buf.definition, { buffer = bufnr, desc = "Go to Definition" })
+        vim.keymap.set(
+          { "n", "v" },
+          "<leader>ca",
+          vim.lsp.buf.code_action,
+          { buffer = bufnr, desc = "Code Action" }
+        )
       end
 
-      lspconfig.lua_ls.setup({})
-      lspconfig.tsserver.setup({})
-
-      -- Ensure LSP is loaded before setting key mappings
-      if vim.lsp and vim.lsp.buf then
-        vim.keymap.set('n', 'K', vim.lsp.buf.hover, { desc = "LSP Hover" })
-        vim.keymap.set('n', 'gd', vim.lsp.buf.definition, { desc = "Go to Definition" })
-        vim.keymap.set({'n', 'v'}, '<leader>ca', vim.lsp.buf.code_action, { desc = "Code Action" })
-      else
-        print("LSP not loaded, key mappings not set")
-      end
-    end
-  }
+      lspconfig.lua_ls.setup({
+        on_attach = on_attach,
+        capabilities = capabilities,
+      })
+      lspconfig.tsserver.setup({
+        on_attach = on_attach,
+        capabilities = capabilities,
+      })
+    end,
+  },
 }
-
